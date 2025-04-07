@@ -39,8 +39,4 @@ if uploaded_file:
 
             # Adjust this if total lectures per subject vary
             total_lectures = 100  
-            attendance_percentages = (present_counts / total_lectures) * 100
-
-            # Subject-wise Attendance Bar Chart
-            st.markdown("### 📊 Subject-wise Attendance")
-            fig_bar, ax = plt.subplots(figsize=(8_
+            attendance_percentages = (_
