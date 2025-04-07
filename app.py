@@ -37,4 +37,10 @@ if uploaded_file:
             student_data = df[df[prn_column] == selected_prn]
 
             if student_data.empty:
-                st.warning("⚠️ No
+                st.warning("⚠️ No data found for the selected PRN.")
+            else:
+                student_name = student_data.iloc[0][name_column] if name_column else "N/A"
+                st.subheader(f"📄 Attendance Report for PRN: `{selected_prn}`")
+                st.markdown(f"**👤 Student Name:** `{student_name}`")
+
+                present_counts = student_
