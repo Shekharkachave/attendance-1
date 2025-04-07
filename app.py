@@ -12,7 +12,7 @@ uploaded_file = st.file_uploader("📤 Upload Attendance Excel File", type=["xls
 if uploaded_file:
     # Read Excel and clean column names
     df = pd.read_excel(uploaded_file)
-    df.columns = df.columns.str.strip()  # remove extra spaces
+    df.columns = df.columns.str.strip()  # Remove extra spaces
 
     # Auto-detect PRN column
     prn_column = next((col for col in df.columns if 'prn' in col.lower()), None)
@@ -42,4 +42,40 @@ if uploaded_file:
                 drop_cols.append(name_column)
 
             subject_data = student_data.drop(columns=drop_cols)
-            subject_data =_
+            subject_data = subject_data.apply(pd.to_numeric, errors='coerce')
+            present_counts = subject_data.iloc[0]
+
+            total_lectures = 100  # Set this as needed
+            attendance_percentages = (present_counts / total_lectures) * 100
+
+            # Bar Chart - Subject-wise Attendance
+            st.markdown("### 📊 Subject-wise Attendance")
+            fig_bar, ax = plt.subplots(figsize=(8, 4))
+            sns.barplot(x=attendance_percentages.index, y=attendance_percentages.values, palette="viridis", ax=ax)
+            ax.set_ylabel("Attendance %")
+            ax.set_ylim(0, 100)
+            plt.xticks(rotation=45)
+            st.pyplot(fig_bar)
+
+            # Overall Attendance Pie Chart
+            total_present = present_counts.sum(skipna=True)
+            total_possible = total_lectures * present_counts.count()
+            total_absent = total_possible - total_present
+
+            st.markdown("### 🥧 Overall Attendance Pie Chart")
+            fig_pie, ax = plt.subplots()
+            ax.pie(
+                [total_present, total_absent],
+                labels=["Present", "Absent"],
+                autopct='%1.1f%%',
+                colors=['#4CAF50', '#F44336']
+            )
+            ax.axis("equal")
+            st.pyplot(fig_pie)
+
+            # Metric - Overall Attendance %
+            overall_attendance = (total_present / total_possible) * 100 if total_possible > 0 else 0
+            st.metric(label="📈 Overall Attendance", value=f"{overall_attendance:.2f}%")
+
+else:
+    st.info("📁 Please upload an Excel file to begin.")
