@@ -36,8 +36,36 @@ if uploaded_file:
             present_counts = subject_data.iloc[0]
 
             total_lectures = 100  # or update this logic if it varies
-            attendance_percentages = (present_counts / total_lectures) * 100  # ✅ Fixed here
+            attendance_percentages = (present_counts / total_lectures) * 100
 
             # Subject-wise Bar Chart
             st.markdown("### 📊 Subject-wise Attendance")
-            fig_bar, ax = plt.subplots(figsize=(8, 4_
+            fig_bar, ax = plt.subplots(figsize=(8, 4))  # ✅ fixed
+            sns.barplot(x=attendance_percentages.index, y=attendance_percentages.values, palette="viridis", ax=ax)
+            ax.set_ylabel("Attendance %")
+            ax.set_ylim(0, 100)
+            plt.xticks(rotation=45)
+            st.pyplot(fig_bar)
+
+            # Pie Chart
+            total_present = present_counts.sum()
+            total_possible = total_lectures * len(present_counts)
+            total_absent = total_possible - total_present
+
+            st.markdown("### 🥧 Overall Attendance Pie Chart")
+            fig_pie, ax = plt.subplots()
+            ax.pie(
+                [total_present, total_absent],
+                labels=["Present", "Absent"],
+                autopct='%1.1f%%',
+                colors=['#4CAF50', '#F44336']
+            )
+            ax.axis("equal")
+            st.pyplot(fig_pie)
+
+            # Overall metric
+            overall_attendance = (total_present / total_possible) * 100
+            st.metric(label="📈 Overall Attendance", value=f"{overall_attendance:.2f}%")
+
+else:
+    st.info("📁 Please upload an Excel file to begin.")
