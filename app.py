@@ -1,105 +1,63 @@
-
+import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from tkinter import filedialog
-import tkinter as tk
-import os
+import io
 
-def select_file():
-    root = tk.Tk()
-    root.withdraw()
-    file_path = filedialog.askopenfilename(
-        title="Select Attendance Data File",
-        filetypes=[("Excel files", "*.xlsx *.xls")]
-    )
-    return file_path
+st.title("Student Attendance Analyzer")
 
-def analyze_attendance(df, prn):
-    df["PRN"] = df["PRN"].astype(str).str.lower()
-    prn = prn.lower()
-    student_df = df[df["PRN"] == prn]
+uploaded_file = st.file_uploader("Upload your attendance Excel file", type=["xlsx", "xls"])
 
-    if student_df.empty:
-        return None, None, None
-
-    total_lectures = len(student_df)
-    absences = student_df["Attendance"].value_counts().get("Absent", 0)
-    attendance_percentage = ((total_lectures - absences) / total_lectures) * 100
-
-    labels = ["Present", "Absent"]
-    sizes = [total_lectures - absences, absences]
-    colors = ['#4CAF50', '#F44336']
-
-    plt.pie(sizes, labels=labels, autopct="%1.1f%%", startangle=90, colors=colors)
-    plt.title(f"Attendance for PRN: {prn.upper()}")
-    plt.axis("equal")
-    plt.show()
-
-    missed_lectures = student_df[student_df["Attendance"] == "Absent"]
-    missed_dates = missed_lectures["Date"].tolist()
-    missed_subjects = missed_lectures["Subject"].tolist()
-
-    weekday_counts = student_df[student_df["Attendance"] == "Absent"]["Day"].value_counts()
-    most_absent_day = weekday_counts.idxmax() if not weekday_counts.empty else "N/A"
-
-    student_data = {
-        "PRN": prn.upper(),
-        "Total Lectures": total_lectures,
-        "Absences": absences,
-        "Attendance Percentage": attendance_percentage,
-        "Missed Dates": missed_dates,
-        "Missed Subjects": missed_subjects,
-        "Most Absent Day": most_absent_day,
-    }
-
-    return student_data, missed_lectures, most_absent_day
-
-def main():
-    print("Please select your attendance data Excel file.")
-    file_path = select_file()
-
-    if not file_path:
-        print("No file selected. Exiting...")
-        return
-
+if uploaded_file is not None:
     try:
-        df = pd.read_excel(file_path)
+        df = pd.read_excel(uploaded_file)
         expected_columns = {"PRN", "Date", "Subject", "Attendance", "Day"}
         if not expected_columns.issubset(df.columns):
-            print(f"Invalid Excel format. Expected columns: {expected_columns}")
-            return
-
-        prn = input("Enter the PRN of the student: ").strip()
-        student_data, missed_lectures, most_absent_day = analyze_attendance(df, prn)
-
-        if student_data is None:
-            print(f"No data found for PRN: {prn}")
-            return
-
-        print(f"\nStudent Details:\nPRN: {student_data['PRN']}")
-        print(f"Total Lectures: {student_data['Total Lectures']}")
-        print(f"Absences: {student_data['Absences']}")
-        print(f"Attendance Percentage: {student_data['Attendance Percentage']:.2f}%")
-
-        if student_data['Missed Dates']:
-            print("\nMissed Lectures:")
-            print("Date | Subject")
-            print("-" * 25)
-            for i in range(len(student_data["Missed Dates"])):
-                print(f"{student_data['Missed Dates'][i]} | {student_data['Missed Subjects'][i]}")
+            st.error(f"Invalid Excel format. Expected columns: {expected_columns}")
         else:
-            print("\nNo missed lectures!")
+            prn = st.text_input("Enter the PRN of the student").strip()
+            if prn:
+                df["PRN"] = df["PRN"].astype(str).str.lower()
+                prn = prn.lower()
+                student_df = df[df["PRN"] == prn]
 
-        if not missed_lectures.empty:
-            filename = f"{student_data['PRN']}_missed_lectures.csv"
-            missed_lectures.to_csv(filename, index=False)
-            print(f"\nMissed lectures exported to '{filename}'")
+                if student_df.empty:
+                    st.warning("No data found for this PRN.")
+                else:
+                    total_lectures = len(student_df)
+                    absences = student_df["Attendance"].value_counts().get("Absent", 0)
+                    attendance_percentage = ((total_lectures - absences) / total_lectures) * 100
 
-        print(f"\nMost Absent Day: {most_absent_day}")
+                    labels = ["Present", "Absent"]
+                    sizes = [total_lectures - absences, absences]
+                    colors = ['#4CAF50', '#F44336']
 
+                    fig, ax = plt.subplots()
+                    ax.pie(sizes, labels=labels, autopct="%1.1f%%", startangle=90, colors=colors)
+                    ax.set_title(f"Attendance for PRN: {prn.upper()}")
+                    ax.axis("equal")
+                    st.pyplot(fig)
+
+                    missed_lectures = student_df[student_df["Attendance"] == "Absent"]
+                    missed_dates = missed_lectures["Date"].tolist()
+                    missed_subjects = missed_lectures["Subject"].tolist()
+
+                    weekday_counts = missed_lectures["Day"].value_counts()
+                    most_absent_day = weekday_counts.idxmax() if not weekday_counts.empty else "N/A"
+
+                    st.subheader("Summary")
+                    st.markdown(f"**Total Lectures:** {total_lectures}")
+                    st.markdown(f"**Absences:** {absences}")
+                    st.markdown(f"**Attendance Percentage:** {attendance_percentage:.2f}%")
+                    st.markdown(f"**Most Absent Day:** {most_absent_day}")
+
+                    if missed_lectures.empty:
+                        st.success("No missed lectures!")
+                    else:
+                        st.subheader("Missed Lectures")
+                        st.dataframe(missed_lectures[["Date", "Subject"]])
+
+                        # Create downloadable CSV
+                        csv = missed_lectures.to_csv(index=False).encode('utf-8')
+                        st.download_button("Download Missed Lectures CSV", data=csv, file_name=f"{prn.upper()}_missed_lectures.csv", mime="text/csv")
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        print("Please ensure your Excel file has the correct format with columns: PRN, Date, Subject, Attendance, Day")
-
-if __name__ == "__main__":
-    main()
+        st.error(f"An error occurred: {e}")
