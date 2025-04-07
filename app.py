@@ -12,7 +12,7 @@ uploaded_file = st.file_uploader("📤 Upload Attendance Excel File", type=["xls
 if uploaded_file:
     # Read Excel and clean column names
     df = pd.read_excel(uploaded_file)
-    df.columns = df.columns.str.strip()
+    df.columns = df.columns.str.strip()  # remove extra spaces
 
     # Auto-detect PRN column
     prn_column = next((col for col in df.columns if 'prn' in col.lower()), None)
@@ -29,44 +29,17 @@ if uploaded_file:
         if student_data.empty:
             st.warning("⚠️ No data found for the selected PRN.")
         else:
+            # Auto-detect name column
+            name_column = next((col for col in df.columns if 'name' in col.lower()), None)
+            student_name = student_data.iloc[0][name_column] if name_column else "Name not found"
+
             st.subheader(f"📄 Attendance Report for PRN: `{selected_prn}`")
+            st.markdown(f"**👤 Student Name:** `{student_name}`")
 
-            # Drop PRN column and ensure data is numeric
-            subject_data = student_data.drop(columns=[prn_column])
-            subject_data = subject_data.apply(pd.to_numeric, errors='coerce')  # ✅ FIX
-            present_counts = subject_data.iloc[0]
+            # Drop PRN and Name columns, convert rest to numeric
+            drop_cols = [prn_column]
+            if name_column:
+                drop_cols.append(name_column)
 
-            total_lectures = 100  # Adjust as needed
-            attendance_percentages = (present_counts / total_lectures) * 100
-
-            # Subject-wise Bar Chart
-            st.markdown("### 📊 Subject-wise Attendance")
-            fig_bar, ax = plt.subplots(figsize=(8, 4))
-            sns.barplot(x=attendance_percentages.index, y=attendance_percentages.values, palette="viridis", ax=ax)
-            ax.set_ylabel("Attendance %")
-            ax.set_ylim(0, 100)
-            plt.xticks(rotation=45)
-            st.pyplot(fig_bar)
-
-            # Overall Attendance Pie Chart
-            total_present = present_counts.sum(skipna=True)
-            total_possible = total_lectures * present_counts.count()
-            total_absent = total_possible - total_present
-
-            st.markdown("### 🥧 Overall Attendance Pie Chart")
-            fig_pie, ax = plt.subplots()
-            ax.pie(
-                [total_present, total_absent],
-                labels=["Present", "Absent"],
-                autopct='%1.1f%%',
-                colors=['#4CAF50', '#F44336']
-            )
-            ax.axis("equal")
-            st.pyplot(fig_pie)
-
-            # Overall attendance %
-            overall_attendance = (total_present / total_possible) * 100 if total_possible > 0 else 0
-            st.metric(label="📈 Overall Attendance", value=f"{overall_attendance:.2f}%")
-
-else:
-    st.info("📁 Please upload an Excel file to begin.")
+            subject_data = student_data.drop(columns=drop_cols)
+            subject_data =_
