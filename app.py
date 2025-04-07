@@ -12,20 +12,17 @@ if uploaded_file:
     df = pd.read_excel(uploaded_file)
     df.columns = df.columns.str.strip()  # Clean column names
 
-    # Identify PRN and Name columns
+    # Detect PRN and Name columns
     prn_column = next((col for col in df.columns if 'prn' in col.lower()), None)
     name_column = next((col for col in df.columns if 'name' in col.lower()), None)
 
     if not prn_column:
-        st.error("❌ No 'PRN' column found in the Excel file.")
+        st.error("❌ 'PRN' column not found in the uploaded Excel file.")
     else:
         prn_list = df[prn_column].unique()
         selected_prn = st.selectbox("🔍 Select PRN Number", prn_list)
 
-        # Get subject columns
+        # Get all subject columns
         subject_cols = [col for col in df.columns if col not in [prn_column, name_column]]
 
         st.markdown("### 🧮 Enter Total Lectures for Each Subject")
-        total_lectures_input = {}
-        for subject in subject_cols:
-            total_lectures_input[subject] = st.number_input(
