@@ -1,46 +1,40 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-# Streamlit page setup
-st.set_page_config(page_title="Student Attendance Dashboard", layout="centered")
-st.title("🎓 Student Attendance Dashboard")
+st.set_page_config(page_title="Attendance Monitor", layout="wide")
 
-# Upload Excel File
-uploaded_file = st.file_uploader("📤 Upload Attendance Excel File", type=["xlsx"])
+st.title("Student Attendance Monitoring")
+
+# Upload file
+uploaded_file = st.file_uploader("Upload Attendance Excel File", type=["xlsx", "xls"])
 
 if uploaded_file:
-    df = pd.read_excel(uploaded_file)
-    df.columns = df.columns.str.strip()  # Clean column names
+    try:
+        df = pd.read_excel(uploaded_file, index_col=0)
+        st.subheader("Raw Attendance Data")
+        st.dataframe(df)
 
-    # Detect PRN and Name columns
-    prn_column = next((col for col in df.columns if 'prn' in col.lower()), None)
-    name_column = next((col for col in df.columns if 'name' in col.lower()), None)
+        if 'Total' in df.index:
+            total_lectures = df.loc['Total']
+            df = df.drop(index='Total')  # Remove total row from student records
 
-    if not prn_column:
-        st.error("❌ 'PRN' column not found in the uploaded Excel file.")
-    else:
-        # Find and extract total lectures row
-        total_row = df[df[prn_column].astype(str).str.lower() == 'total']
-        if total_row.empty:
-            st.error("❌ Could not find a row labeled 'Total' to get lecture counts.")
+            st.subheader("Subject-wise Attendance %")
+            attendance_percent = (df / total_lectures) * 100
+            attendance_percent = attendance_percent.round(2)
+            st.dataframe(attendance_percent)
+
+            st.subheader("Overall Attendance %")
+            overall_percent = attendance_percent.mean(axis=1).round(2)
+            overall_df = pd.DataFrame({
+                'Student': overall_percent.index,
+                'Overall %': overall_percent.values
+            }).set_index('Student')
+            st.dataframe(overall_df)
+
         else:
-            total_counts = total_row.iloc[0]
-            df = df[df[prn_column].astype(str).str.lower() != 'total']  # remove 'Total' row
+            st.error("Could not find a row labeled 'Total'. Please check the Excel file format.")
 
-            prn_list = df[prn_column].unique()
-            selected_prn = st.selectbox("🔍 Select PRN Number", prn_list)
-
-            subject_cols = [col for col in df.columns if col not in [prn_column, name_column]]
-
-            student_data = df[df[prn_column] == selected_prn]
-
-            if student_data.empty:
-                st.warning("⚠️ No data found for the selected PRN.")
-            else:
-                student_name = student_data.iloc[0][name_column] if name_column else "N/A"
-                st.subheader(f"📄 Attendance Report for PRN: `{selected_prn}`")
-                st.markdown(f"**👤 Student Name:** `{student_name}`")
-
-                present_counts = student_
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+else:
+    st.info("Please upload an Excel file to begin.")
